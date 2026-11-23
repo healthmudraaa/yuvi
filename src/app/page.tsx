@@ -241,7 +241,7 @@ export default function Home() {
             One employee. Multiple policies. One connected view.
           </span>
           <h1 className="text-4xl md:text-6xl font-display font-medium text-ink mb-6 leading-[1.08]">
-            The <em className="text-jade-ink not-italic font-medium">group health coverage-gap</em><br className="hidden md:block" /> infrastructure layer
+            Close the <em className="text-jade-ink not-italic font-medium">copay gap</em><br className="hidden md:block" /> your group policy leaves behind
           </h1>
           <p className="text-lg md:text-xl text-ink-muted mb-10 max-w-2xl mx-auto">
             Yuvi connects to the group health policy your employees already have, shows them exactly where
