@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  background-color: #F5F1EA;
+  color: #241B14;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  text-wrap: balance;
+}
+
+::selection {
+  background: #F0C9A8;
+  color: #A83D14;
+}
+
+code, pre {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}

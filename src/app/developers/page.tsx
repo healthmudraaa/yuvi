@@ -1,115 +1,172 @@
 'use client';
 
+import { useState } from 'react';
 import {
-  Shield,
   ArrowRight,
   ArrowLeft,
-  Webhook,
-  KeyRound,
-  Layers,
-  Link2,
+  Terminal,
   Building2,
+  Link2,
+  Layers,
   Users,
   HeartPulse,
   ShieldCheck,
-  Terminal,
+  Info,
 } from 'lucide-react';
+import { DOC_SECTIONS, INTEGRATION_STEPS, API_USERS, type Endpoint } from './api-data';
 
 const getIconProps = (size?: number) => ({
   size: size || 24,
-  strokeWidth: 2,
+  strokeWidth: 1.75,
   className: 'shrink-0',
 });
 
-const ENDPOINT_GROUPS = [
-  {
-    title: 'Policy linking',
-    endpoints: [
-      { method: 'POST', path: '/v1/groups/link', desc: 'Link an employer’s existing group policy from any supported insurer/TPA.' },
-      { method: 'GET', path: '/v1/groups/{group_id}', desc: 'Fetch normalized coverage, sub-limits and copay terms for a linked group.' },
-      { method: 'POST', path: '/v1/groups/{group_id}/unlink', desc: 'Unlink a policy, e.g. on insurer switch at renewal.' },
-    ],
-  },
-  {
-    title: 'Add-ons',
-    endpoints: [
-      { method: 'GET', path: '/v1/addons', desc: 'List add-ons available for a linked policy (OPD, mental health, critical illness top-up, copay waiver).' },
-      { method: 'POST', path: '/v1/addons/subscribe', desc: 'Enroll an employee into one or more add-ons mid-year.' },
-      { method: 'DELETE', path: '/v1/addons/{subscription_id}', desc: 'Cancel an add-on subscription.' },
-    ],
-  },
-  {
-    title: 'Claims & copay waiver',
-    endpoints: [
-      { method: 'POST', path: '/v1/claims/copay-waiver', desc: 'Submit the gap between insurer settlement and bill amount for waiver.' },
-      { method: 'GET', path: '/v1/claims/{claim_id}', desc: 'Poll claim/waiver status.' },
-      { method: 'POST', path: '/v1/webhooks', desc: 'Register a webhook URL to receive claim.settled and waiver.approved events.' },
-    ],
-  },
-];
+const METHOD_STYLES: Record<Endpoint['method'], string> = {
+  GET: 'bg-jade-soft text-jade-ink',
+  POST: 'bg-white/10 text-ink',
+  DELETE: 'bg-ledger-soft text-ledger',
+};
 
-const AUTH_SNIPPET = `# All requests are authenticated with a bearer API key
-curl https://api.yuvi.co/v1/groups/grp_8f2c1a \\
-  -H "Authorization: Bearer YUVI_API_KEY"`;
+function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
+  return (
+    <div className="border border-hairline rounded-stamp p-6 mb-8 bg-surface">
+      <div className="flex items-start gap-3 mb-2">
+        <span className={`text-xs font-mono font-bold px-2 py-1 rounded shrink-0 mt-0.5 ${METHOD_STYLES[endpoint.method]}`}>
+          {endpoint.method}
+        </span>
+        <div>
+          <h3 className="font-display font-medium text-ink">{endpoint.title}</h3>
+          <code className="text-xs text-ink-faint break-all">{endpoint.path}</code>
+        </div>
+      </div>
+      {endpoint.desc && <p className="text-sm text-ink-muted mb-4">{endpoint.desc}</p>}
 
-const LINK_SNIPPET = `curl -X POST https://api.yuvi.co/v1/groups/link \\
-  -H "Authorization: Bearer YUVI_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "insurer": "star_health",
-    "tpa_policy_number": "SH-GRP-44210",
-    "employer_id": "emp_co_019"
-  }'
+      {endpoint.params && endpoint.params.length > 0 && (
+        <div className="overflow-x-auto mb-5">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="text-left text-xs font-mono text-ink-faint uppercase tracking-wide border-b border-hairline">
+                <th className="py-2 pr-4">Parameter</th>
+                <th className="py-2 pr-4">Description</th>
+                <th className="py-2 pr-4">Req</th>
+                <th className="py-2">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {endpoint.params.map((p) => (
+                <tr key={p.name} className="border-b border-hairline align-top">
+                  <td className="py-2 pr-4 font-mono text-xs text-ink whitespace-nowrap">{p.name}</td>
+                  <td className="py-2 pr-4 text-ink-muted">{p.desc}</td>
+                  <td className="py-2 pr-4">
+                    <span
+                      className={`text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded ${
+                        p.req === 'M' ? 'bg-ledger-soft text-ledger' : p.req === 'OM' ? 'bg-jade-soft text-jade-ink' : 'bg-paper text-ink-faint'
+                      }`}
+                    >
+                      {p.req}
+                    </span>
+                  </td>
+                  <td className="py-2 text-ink-faint">{p.type}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-# 201 Created
-{ "group_id": "grp_8f2c1a", "status": "linked", "sum_insured": 500000 }`;
+      {endpoint.headers.length > 0 && (
+        <div className="mb-5">
+          <h4 className="text-xs font-mono text-ink-faint uppercase tracking-wide mb-2">Headers</h4>
+          <div className="space-y-1">
+            {endpoint.headers.map((h) => (
+              <div key={h.name} className="text-xs text-ink-muted">
+                <span className="font-mono text-ink">{h.name}</span>: {h.value}
+                {h.desc && <span className="text-ink-faint"> — {h.desc}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-const WEBHOOK_SNIPPET = `{
-  "event": "waiver.approved",
-  "data": {
-    "waiver_id": "wv_019a",
-    "policy_id": "grp_8f2c1a",
-    "employee_id": "emp_2291",
-    "waived_amount": 50000
-  }
-}`;
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <h4 className="text-xs font-mono text-ink-faint uppercase tracking-wide mb-2">Example Request</h4>
+          <pre className="bg-ink text-paper rounded-md p-4 text-xs overflow-x-auto"><code>{endpoint.requestExample}</code></pre>
+        </div>
+        <div>
+          <h4 className="text-xs font-mono text-ink-faint uppercase tracking-wide mb-2">Example Response</h4>
+          {endpoint.responseExample ? (
+            <pre className="bg-ink text-paper rounded-md p-4 text-xs overflow-x-auto"><code>{endpoint.responseExample}</code></pre>
+          ) : (
+            <div className="border border-dashed border-hairline rounded-md p-4 text-xs text-ink-faint h-full flex items-center">
+              This request doesn&apos;t return any response body.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Developers() {
+  const [activeId, setActiveId] = useState(DOC_SECTIONS[0].id);
+  const activeSection = DOC_SECTIONS.find((s) => s.id === activeId) ?? DOC_SECTIONS[0];
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-paper">
       {/* Nav */}
-      <nav className="border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center">
-            <Shield {...getIconProps(30)} className="text-blue-600" />
-            <span className="ml-2 text-2xl font-bold text-blue-900">Yuvi</span>
+      <nav className="border-b border-hairline sticky top-0 bg-paper/90 backdrop-blur z-40">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-baseline gap-2">
+            <span className="text-2xl font-display italic font-medium text-ink">Yuvi</span>
+            <span className="hidden sm:inline font-mono text-[11px] text-ink-faint uppercase tracking-wider">Group Health API</span>
           </a>
-          <a href="/" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600">
+          <a href="/" className="flex items-center gap-2 text-sm font-medium text-ink-muted hover:text-jade-ink">
             <ArrowLeft {...getIconProps(16)} /> Back to home
           </a>
         </div>
       </nav>
 
       {/* Hero */}
-      <header className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-800 text-blue-300 text-sm font-semibold mb-6">
-            <Terminal {...getIconProps(16)} /> Developers
+      <header className="bg-ink text-paper">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-16 text-center">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/15 text-jade-soft text-xs font-mono uppercase tracking-wider mb-6">
+            <Terminal {...getIconProps(15)} /> Yuvi Insurance API SDK
           </span>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Build on the Yuvi API</h1>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10">
-            Link any group health policy, offer add-ons, and settle copay waivers programmatically.
-            REST over HTTPS, JSON in and out, a sandbox for every endpoint below.
+          <h1 className="text-4xl md:text-5xl font-display font-medium mb-4">Build on the Yuvi API</h1>
+          <p className="text-lg text-white/60 max-w-2xl mx-auto mb-8">
+            Link a group health policy, offer add-ons, and coordinate eligible copay-gap settlements
+            programmatically. Not for end customers — this is technical documentation for the teams
+            integrating Yuvi into their own product.
           </p>
-          <a href="#quickstart" className="inline-flex items-center px-6 py-3 bg-blue-600 rounded-lg font-semibold hover:bg-blue-700">
-            Quickstart <ArrowRight {...getIconProps(18)} className="ml-2" />
-          </a>
+          <div className="flex flex-wrap justify-center gap-2">
+            {API_USERS.map((u) => (
+              <span key={u} className="text-xs font-mono text-jade-soft border border-white/15 rounded-full px-3 py-1.5">
+                {u}
+              </span>
+            ))}
+          </div>
         </div>
       </header>
 
+      {/* Integration steps */}
+      <section className="max-w-4xl mx-auto px-5 sm:px-6 py-16">
+        <h2 className="text-2xl font-display font-medium text-center text-ink mb-2">The integration, end to end</h2>
+        <p className="text-center text-ink-muted mb-10">Eight API capabilities take a partner from "show the plan" to "renew the policy."</p>
+        <div className="border border-hairline rounded-stamp overflow-hidden">
+          {INTEGRATION_STEPS.map((s, i) => (
+            <div key={s.step} className={`flex items-center gap-4 px-5 py-3.5 ${i % 2 === 0 ? 'bg-surface' : 'bg-paper'}`}>
+              <span className="font-mono text-xs text-ink-faint w-5 shrink-0">0{s.step}</span>
+              <span className="font-display font-medium text-ink w-48 shrink-0">{s.capability}</span>
+              <span className="text-sm text-ink-muted">{s.desc}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Flow diagram */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-center text-gray-900 mb-10">How a request flows through Yuvi</h2>
+      <section className="max-w-6xl mx-auto px-5 sm:px-6 py-16">
+        <h2 className="text-2xl font-display font-medium text-center text-ink mb-10">How a request flows through Yuvi</h2>
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 overflow-x-auto pb-2">
           {[
             { icon: Building2, label: 'Your app / HRMS' },
@@ -121,83 +178,67 @@ export default function Developers() {
           ].map((node, i, arr) => (
             <div key={node.label} className="flex items-center gap-4 shrink-0">
               <div className="flex flex-col items-center text-center w-32">
-                <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-jade flex items-center justify-center mb-3">
                   <node.icon {...getIconProps(22)} className="text-white" />
                 </div>
-                <span className="text-xs text-gray-600">{node.label}</span>
+                <span className="text-xs text-ink-muted">{node.label}</span>
               </div>
-              {i < arr.length - 1 && <ArrowRight {...getIconProps(18)} className="text-gray-300 hidden md:block" />}
+              {i < arr.length - 1 && <ArrowRight {...getIconProps(18)} className="text-hairline hidden md:block" />}
             </div>
           ))}
         </div>
       </section>
 
-      {/* Quickstart */}
-      <section id="quickstart" className="bg-gray-50 py-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-2">
-            <KeyRound {...getIconProps(24)} className="text-blue-600" /> Quickstart
-          </h2>
-          <div className="space-y-8">
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-2">1. Authenticate</h3>
-              <pre className="bg-gray-900 text-gray-100 rounded-lg p-5 text-sm overflow-x-auto"><code>{AUTH_SNIPPET}</code></pre>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-2">2. Link a group policy</h3>
-              <pre className="bg-gray-900 text-gray-100 rounded-lg p-5 text-sm overflow-x-auto"><code>{LINK_SNIPPET}</code></pre>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-2">3. Listen for claim &amp; waiver events</h3>
-              <pre className="bg-gray-900 text-gray-100 rounded-lg p-5 text-sm overflow-x-auto"><code>{WEBHOOK_SNIPPET}</code></pre>
-            </div>
+      {/* Docs: sidebar + content */}
+      <section className="bg-surface border-t border-hairline">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-12 flex flex-col md:flex-row gap-10">
+          <aside className="md:w-56 shrink-0">
+            <nav className="md:sticky md:top-20 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
+              {DOC_SECTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveId(s.id)}
+                  className={`text-left px-3 py-2 rounded-md text-sm whitespace-nowrap md:whitespace-normal transition ${
+                    activeId === s.id ? 'bg-jade text-white font-semibold' : 'text-ink-muted hover:bg-paper'
+                  }`}
+                >
+                  {s.title}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl font-display font-medium text-ink mb-6">{activeSection.title}</h2>
+
+            {activeSection.intro && (
+              <div className="bg-jade-soft border border-jade-soft-border rounded-stamp p-5 mb-8">
+                <ul className="space-y-2">
+                  {activeSection.intro.map((line) => (
+                    <li key={line} className="flex items-start gap-2 text-sm text-ink">
+                      <Info {...getIconProps(16)} className="text-jade-ink mt-0.5" /> {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {activeSection.endpoints.map((e) => (
+              <EndpointCard key={e.title} endpoint={e} />
+            ))}
+
+            {activeSection.endpoints.length === 0 && !activeSection.intro && (
+              <p className="text-sm text-ink-faint">No endpoints in this section yet.</p>
+            )}
           </div>
-        </div>
-      </section>
-
-      {/* Endpoint reference */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-10 flex items-center gap-2">
-          <Webhook {...getIconProps(24)} className="text-blue-600" /> API reference
-        </h2>
-        <div className="space-y-10">
-          {ENDPOINT_GROUPS.map((group) => (
-            <div key={group.title}>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">{group.title}</h3>
-              <div className="space-y-3">
-                {group.endpoints.map((e) => (
-                  <div key={e.path} className="flex items-start gap-3 border border-gray-200 rounded-lg p-4">
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded shrink-0 ${
-                        e.method === 'GET'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : e.method === 'DELETE'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}
-                    >
-                      {e.method}
-                    </span>
-                    <div>
-                      <code className="text-sm text-gray-900">{e.path}</code>
-                      <p className="text-sm text-gray-500 mt-1">{e.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center">
-            <Shield {...getIconProps(24)} className="text-blue-600" />
-            <span className="ml-2 text-xl font-bold text-blue-900">Yuvi</span>
-          </div>
-          <p className="text-gray-500 text-sm">© 2026 Yuvi. All rights reserved.</p>
+      <footer className="bg-paper border-t border-hairline">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-lg font-display italic font-medium text-ink">Yuvi</span>
+          <p className="text-ink-faint text-sm">© 2026 Yuvi. All rights reserved.</p>
         </div>
       </footer>
     </div>
